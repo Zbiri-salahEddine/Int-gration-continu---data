@@ -39,7 +39,8 @@ services:
       retries: 30
 
   processeur:
-    image: ${IMAGE:?variable obligatoire}
+    build: .
+    image: pipeline-de-processeur:${VERSION:-local}
     restart: unless-stopped
     depends_on:
       db:
