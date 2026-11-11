@@ -64,7 +64,7 @@ L'amélioration retenue est la pipeline CD. Les options OCR, small language mode
 | Script de déploiement | [deploy/deploy.sh](deploy/deploy.sh) |
 | Test de bout en bout de la stack | [tests/e2e/test_stack_production.py](tests/e2e/test_stack_production.py) |
 
-La CD se déclenche après une CI réussie sur `main`. Elle déploie d'abord la stack de production sur le runner et la teste, publie ensuite l'image sur GitHub Container Registry, puis déploie sur la machine virtuelle par SSH.
+La CD se déclenche après une CI réussie sur `main`. Elle déploie d'abord la stack de production sur le runner et la teste, publie ensuite l'image sur GitHub Container Registry, puis déploie sur la machine virtuelle par SSH. Tant que le secret `VM_HOST` n'est pas défini, le déploiement sur la VM est ignoré et un message l'indique dans le résumé de l'exécution.
 
 Configuration requise :
 

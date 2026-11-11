@@ -26,11 +26,11 @@ jobs:
       S3_SECRET_KEY: e2e-secret
       INTERVALLE_SECONDES: "3"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
           cache: pip
@@ -61,7 +61,7 @@ jobs:
     outputs:
       image: ${{ steps.nom.outputs.image }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
@@ -69,7 +69,7 @@ jobs:
         id: nom
         env:
           SHA: ${{ github.event.workflow_run.head_sha }}
-        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}/processeur:${SHA}" >> "$GITHUB_OUTPUT"
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/pipeline-de-processeur:${SHA}" >> "$GITHUB_OUTPUT"
 
       - name: Construire et publier l'image
         env:
@@ -77,11 +77,31 @@ jobs:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
-          docker build -t "$IMAGE" .
+          docker build --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" -t "$IMAGE" .
           docker push "$IMAGE"
 
-  deploiement:
+  verifier-vm:
     needs: image
+    runs-on: ubuntu-latest
+    environment: production
+    outputs:
+      configuree: ${{ steps.verification.outputs.configuree }}
+    steps:
+      - name: Vérifier que la VM de production est configurée
+        id: verification
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+        run: |
+          if [ -n "$VM_HOST" ]; then
+            echo "configuree=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configuree=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Secret VM_HOST absent : le déploiement sur la VM est ignoré."
+          fi
+
+  deploiement:
+    needs: [image, verifier-vm]
+    if: needs.verifier-vm.outputs.configuree == 'true'
     runs-on: ubuntu-latest
     environment: production
     permissions:
@@ -90,7 +110,7 @@ jobs:
     env:
       VM: ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
