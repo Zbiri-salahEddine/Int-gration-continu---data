@@ -1,0 +1,78 @@
+
+$ python run_pipeline.py --simuler-pannes-insertion 99
+2026-11-11 11:24:41,035 INFO    === Étape : infra ===
+ Network pipeline-de_default  Creating
+ Network pipeline-de_default  Created
+ Container pipeline-de-db-1  Creating
+ Container pipeline-de-s3-1  Creating
+ Container pipeline-de-db-1  Created
+ Container pipeline-de-grafana-1  Creating
+ Container pipeline-de-s3-1  Created
+ Container pipeline-de-grafana-1  Created
+ Container pipeline-de-db-1  Starting
+ Container pipeline-de-s3-1  Starting
+ Container pipeline-de-db-1  Started
+ Container pipeline-de-db-1  Waiting
+ Container pipeline-de-s3-1  Started
+ Container pipeline-de-db-1  Healthy
+ Container pipeline-de-grafana-1  Starting
+ Container pipeline-de-grafana-1  Started
+ Container pipeline-de-grafana-1  Waiting
+ Container pipeline-de-s3-1  Waiting
+ Container pipeline-de-db-1  Waiting
+ Container pipeline-de-db-1  Healthy
+ Container pipeline-de-grafana-1  Healthy
+ Container pipeline-de-s3-1  Healthy
+2026-11-11 11:25:07,925 INFO    S3, PostgreSQL et Grafana démarrés, bucket transactions prêt
+2026-11-11 11:25:07,925 INFO    === Étape : generation ===
+2026-11-11 11:25:08,167 INFO    3 fichiers CSV déposés dans s3://transactions
+2026-11-11 11:25:08,167 INFO    === Étape : base ===
+2026-11-11 11:25:08,226 INFO    Schéma de la base créé
+2026-11-11 11:25:08,226 INFO    === Étape : traitement ===
+2026-11-11 11:25:08,619 WARNING Tentative 1/4 échouée (panne d'insertion simulée), nouvel essai dans 0.5s
+2026-11-11 11:25:09,338 WARNING Tentative 2/4 échouée (panne d'insertion simulée), nouvel essai dans 1.0s
+2026-11-11 11:25:10,553 WARNING Tentative 3/4 échouée (panne d'insertion simulée), nouvel essai dans 2.0s
+2026-11-11 11:25:12,770 ERROR   transactions_2026_01.csv : ÉCHEC : panne d'insertion simulée
+2026-11-11 11:25:13,006 WARNING Tentative 1/4 échouée (panne d'insertion simulée), nouvel essai dans 0.5s
+2026-11-11 11:25:13,724 WARNING Tentative 2/4 échouée (panne d'insertion simulée), nouvel essai dans 1.0s
+2026-11-11 11:25:14,926 WARNING Tentative 3/4 échouée (panne d'insertion simulée), nouvel essai dans 2.0s
+2026-11-11 11:25:17,157 ERROR   transactions_2026_02.csv : ÉCHEC : panne d'insertion simulée
+2026-11-11 11:25:17,401 WARNING Tentative 1/4 échouée (panne d'insertion simulée), nouvel essai dans 0.5s
+2026-11-11 11:25:18,109 WARNING Tentative 2/4 échouée (panne d'insertion simulée), nouvel essai dans 1.0s
+2026-11-11 11:25:19,326 WARNING Tentative 3/4 échouée (panne d'insertion simulée), nouvel essai dans 2.0s
+2026-11-11 11:25:21,542 ERROR   transactions_2026_03.csv : ÉCHEC : panne d'insertion simulée
+2026-11-11 11:25:21,542 INFO    Bilan : 0 insérés, 0 ignorés, 3 en échec
+Fichiers en échec : transactions_2026_01.csv, transactions_2026_02.csv, transactions_2026_03.csv
+[code de sortie : 1]
+
+$ python run_pipeline.py traitement
+2026-11-11 11:25:22,404 INFO    === Étape : traitement ===
+2026-11-11 11:25:22,829 INFO    transactions_2026_01.csv : 5 transactions insérées
+2026-11-11 11:25:23,070 INFO    transactions_2026_02.csv : 7 transactions insérées
+2026-11-11 11:25:23,330 INFO    transactions_2026_03.csv : 8 transactions insérées
+2026-11-11 11:25:23,330 INFO    Bilan : 3 insérés, 0 ignorés, 0 en échec
+[code de sortie : 0]
+
+$ python run_pipeline.py tests-integration
+2026-11-11 11:25:24,025 INFO    === Étape : tests-integration ===
+============================= test session starts =============================
+platform win32 -- Python 3.13.15, pytest-9.2.0, pluggy-1.7.0 -- C:\Users\sltec\Desktop\HelloWorld\integration continu\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\sltec\AppData\Local\Temp\scenario-bd52dhoa\projet
+configfile: pytest.ini
+collecting ... collected 11 items
+
+tests/integration/test_resultat_pipeline.py::test_les_valeurs_inserees_par_la_pipeline_sont_correctes PASSED [  9%]
+tests/integration/test_resultat_pipeline.py::test_une_transaction_est_inseree_a_l_identique PASSED [ 18%]
+tests/integration/test_resultat_pipeline.py::test_le_dashboard_lit_les_donnees_de_la_base PASSED [ 27%]
+tests/integration/test_robustesse.py::test_les_trois_fichiers_sont_inseres PASSED [ 36%]
+tests/integration/test_robustesse.py::test_un_fichier_n_est_jamais_traite_deux_fois PASSED [ 45%]
+tests/integration/test_robustesse.py::test_un_fichier_renomme_n_est_pas_retraite PASSED [ 54%]
+tests/integration/test_robustesse.py::test_les_pannes_d_insertion_sont_relancees_sans_doublon PASSED [ 63%]
+tests/integration/test_robustesse.py::test_un_echec_definitif_d_insertion_ne_laisse_rien_puis_le_fichier_est_repris PASSED [ 72%]
+tests/integration/test_robustesse.py::test_les_pannes_de_telechargement_sont_relancees PASSED [ 81%]
+tests/integration/test_robustesse.py::test_un_telechargement_definitivement_en_panne_est_repris_au_passage_suivant PASSED [ 90%]
+tests/integration/test_robustesse.py::test_un_fichier_invalide_est_signale_sans_bloquer_les_autres PASSED [100%]
+
+============================= 11 passed in 9.71s ==============================
+[code de sortie : 0]

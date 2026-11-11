@@ -1,0 +1,53 @@
+# Environnement de développement et d'intégration continue.
+name: pipeline-de
+
+services:
+  s3:
+    image: chrislusf/seaweedfs:3.97
+    entrypoint: ["/bin/sh", "/s3/demarrer.sh"]
+    environment:
+      S3_ACCESS_KEY: pipeline-dev
+      S3_SECRET_KEY: pipeline-dev-secret
+    ports:
+      - "8333:8333"
+    volumes:
+      - ./s3:/s3:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8333/status"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: pipeline
+      POSTGRES_PASSWORD: pipeline
+      POSTGRES_DB: transactions
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pipeline -d transactions"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  grafana:
+    image: grafana/grafana:12.1.1
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      POSTGRES_PASSWORD: pipeline
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      interval: 3s
+      timeout: 3s
+      retries: 40

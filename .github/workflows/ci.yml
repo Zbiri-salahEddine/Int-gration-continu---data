@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      bug:
+        description: Bug à injecter pour observer l'échec de la pipeline
+        type: choice
+        default: aucun
+        options:
+          - aucun
+          - bug_generation
+          - bug_traitement
+
+permissions:
+  contents: read
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Installer les dépendances
+        run: pip install -r requirements-dev.txt
+
+      - name: Injecter le bug demandé
+        if: github.event_name == 'workflow_dispatch' && inputs.bug != 'aucun'
+        env:
+          BUG: ${{ inputs.bug }}
+        run: python scenarios/scenario.py --injecter-seulement "$BUG"
+
+      - name: Lint
+        run: flake8 .
+
+      - name: Tests unitaires
+        run: pytest tests/unitaires -v
+
+      - name: Démarrer S3, PostgreSQL et Grafana
+        run: python run_pipeline.py infra
+
+      - name: Générer les CSV dans S3
+        run: python run_pipeline.py generation
+
+      - name: Créer le schéma de la base
+        run: python run_pipeline.py base
+
+      - name: Traiter et insérer les données
+        run: python run_pipeline.py traitement
+
+      - name: Tests d'intégration
+        run: python run_pipeline.py tests-integration
+
+      - name: Journaux des services
+        if: failure()
+        run: docker compose logs --tail 100

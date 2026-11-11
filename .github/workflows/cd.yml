@@ -1,0 +1,136 @@
+name: CD
+
+# Déploie sur la machine virtuelle uniquement après une CI réussie sur main.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: deploiement-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://pipeline:e2e-postgres@127.0.0.1:5434/transactions
+      S3_ENDPOINT: http://127.0.0.1:8334
+      S3_ACCESS_KEY: e2e-access
+      S3_SECRET_KEY: e2e-secret
+      INTERVALLE_SECONDES: "3"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Installer les dépendances
+        run: pip install -r requirements-dev.txt
+
+      - name: Construire l'image
+        run: docker build -t pipeline-de:e2e .
+
+      - name: Déployer la stack de production sur le runner
+        run: ENV_FILE=deploy/e2e.env sh deploy/deploy.sh --sans-pull
+
+      - name: Tester la stack de bout en bout
+        run: pytest tests/e2e -v
+
+      - name: Journaux des services
+        if: failure()
+        run: docker compose -f docker-compose.prod.yml --env-file deploy/e2e.env logs --tail 100
+
+  image:
+    needs: e2e
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.nom.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Déterminer le nom de l'image
+        id: nom
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}/processeur:${SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Construire et publier l'image
+        env:
+          IMAGE: ${{ steps.nom.outputs.image }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+
+  deploiement:
+    needs: image
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+    env:
+      VM: ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Configurer SSH
+        env:
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+          VM_KNOWN_HOSTS: ${{ secrets.VM_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          (umask 077 && printf '%s\n' "$VM_SSH_KEY" > ~/.ssh/id_deploiement)
+          printf '%s\n' "$VM_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf 'IdentityFile ~/.ssh/id_deploiement\n' > ~/.ssh/config
+
+      - name: Générer le fichier d'environnement
+        env:
+          IMAGE: ${{ needs.image.outputs.image }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          S3_ACCESS_KEY: ${{ secrets.S3_ACCESS_KEY }}
+          S3_SECRET_KEY: ${{ secrets.S3_SECRET_KEY }}
+          GRAFANA_PASSWORD: ${{ secrets.GRAFANA_PASSWORD }}
+        run: |
+          umask 077
+          {
+            echo "IMAGE=$IMAGE"
+            echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD"
+            echo "S3_ACCESS_KEY=$S3_ACCESS_KEY"
+            echo "S3_SECRET_KEY=$S3_SECRET_KEY"
+            echo "GRAFANA_PASSWORD=$GRAFANA_PASSWORD"
+          } > .env
+
+      - name: Copier les fichiers sur la VM
+        run: tar czf - docker-compose.prod.yml s3 grafana deploy/deploy.sh .env | ssh "$VM" 'mkdir -p ~/pipeline-de && tar xzf - -C ~/pipeline-de'
+
+      - name: Déployer
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$TOKEN" | ssh "$VM" docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          ssh "$VM" 'cd ~/pipeline-de && sh deploy/deploy.sh'
+
+      - name: Fermer la session du registre
+        if: always()
+        run: ssh "$VM" 'docker logout ghcr.io' || true

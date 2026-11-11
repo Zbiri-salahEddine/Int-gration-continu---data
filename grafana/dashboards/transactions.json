@@ -1,0 +1,58 @@
+{
+  "uid": "transactions",
+  "title": "Transactions financières",
+  "schemaVersion": 41,
+  "editable": false,
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Fichiers traités",
+      "gridPos": { "x": 0, "y": 0, "w": 8, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "transactions-postgres" },
+      "targets": [{ "refId": "A", "format": "table", "editorMode": "code", "rawQuery": true,
+        "rawSql": "SELECT count(*) AS \"Fichiers\" FROM fichier_traite" }]
+    },
+    {
+      "id": 2, "type": "stat", "title": "Transactions",
+      "gridPos": { "x": 8, "y": 0, "w": 8, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "transactions-postgres" },
+      "targets": [{ "refId": "A", "format": "table", "editorMode": "code", "rawQuery": true,
+        "rawSql": "SELECT count(*) AS \"Transactions\" FROM transaction_financiere" }]
+    },
+    {
+      "id": 3, "type": "stat", "title": "Transactions flaggées (> 5000)",
+      "gridPos": { "x": 16, "y": 0, "w": 8, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "transactions-postgres" },
+      "targets": [{ "refId": "A", "format": "table", "editorMode": "code", "rawQuery": true,
+        "rawSql": "SELECT count(*) AS \"Flaggées\" FROM transaction_financiere WHERE flag" }]
+    },
+    {
+      "id": 4, "type": "table", "title": "Montant envoyé par IBAN",
+      "gridPos": { "x": 0, "y": 4, "w": 8, "h": 8 },
+      "datasource": { "type": "postgres", "uid": "transactions-postgres" },
+      "targets": [{ "refId": "A", "format": "table", "editorMode": "code", "rawQuery": true,
+        "rawSql": "SELECT iban AS \"IBAN\", total AS \"Total envoyé\" FROM total_envoye_par_iban ORDER BY total DESC" }]
+    },
+    {
+      "id": 5, "type": "table", "title": "Montant envoyé par banque",
+      "gridPos": { "x": 8, "y": 4, "w": 8, "h": 8 },
+      "datasource": { "type": "postgres", "uid": "transactions-postgres" },
+      "targets": [{ "refId": "A", "format": "table", "editorMode": "code", "rawQuery": true,
+        "rawSql": "SELECT banque AS \"Banque\", total AS \"Total envoyé\" FROM total_envoye_par_banque ORDER BY total DESC" }]
+    },
+    {
+      "id": 6, "type": "table", "title": "Montant reçu par IBAN",
+      "gridPos": { "x": 16, "y": 4, "w": 8, "h": 8 },
+      "datasource": { "type": "postgres", "uid": "transactions-postgres" },
+      "targets": [{ "refId": "A", "format": "table", "editorMode": "code", "rawQuery": true,
+        "rawSql": "SELECT iban AS \"IBAN\", total AS \"Total reçu\" FROM total_recu_par_iban ORDER BY total DESC" }]
+    },
+    {
+      "id": 7, "type": "table", "title": "Transactions flaggées",
+      "gridPos": { "x": 0, "y": 12, "w": 24, "h": 8 },
+      "datasource": { "type": "postgres", "uid": "transactions-postgres" },
+      "targets": [{ "refId": "A", "format": "table", "editorMode": "code", "rawQuery": true,
+        "rawSql": "SELECT datetime_transaction AS \"Date\", iban_origine AS \"IBAN origine\", banque_source AS \"Banque\", iban_destinataire AS \"IBAN destinataire\", montant AS \"Montant\" FROM transaction_financiere WHERE flag ORDER BY montant DESC" }]
+    }
+  ]
+}

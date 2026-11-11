@@ -1,0 +1,5 @@
+*
+!requirements.txt
+!pipeline/
+!sql/
+**/__pycache__

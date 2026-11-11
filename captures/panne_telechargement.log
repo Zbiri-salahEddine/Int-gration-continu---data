@@ -1,0 +1,60 @@
+
+$ python run_pipeline.py --simuler-pannes-telechargement 3
+2026-11-11 11:25:47,251 INFO    === Étape : infra ===
+ Network pipeline-de_default  Creating
+ Network pipeline-de_default  Created
+ Container pipeline-de-s3-1  Creating
+ Container pipeline-de-db-1  Creating
+ Container pipeline-de-s3-1  Created
+ Container pipeline-de-db-1  Created
+ Container pipeline-de-grafana-1  Creating
+ Container pipeline-de-grafana-1  Created
+ Container pipeline-de-s3-1  Starting
+ Container pipeline-de-db-1  Starting
+ Container pipeline-de-db-1  Started
+ Container pipeline-de-db-1  Waiting
+ Container pipeline-de-s3-1  Started
+ Container pipeline-de-db-1  Healthy
+ Container pipeline-de-grafana-1  Starting
+ Container pipeline-de-grafana-1  Started
+ Container pipeline-de-s3-1  Waiting
+ Container pipeline-de-db-1  Waiting
+ Container pipeline-de-grafana-1  Waiting
+ Container pipeline-de-db-1  Healthy
+ Container pipeline-de-grafana-1  Healthy
+ Container pipeline-de-s3-1  Healthy
+2026-11-11 11:26:05,478 INFO    S3, PostgreSQL et Grafana démarrés, bucket transactions prêt
+2026-11-11 11:26:05,479 INFO    === Étape : generation ===
+2026-11-11 11:26:05,748 INFO    3 fichiers CSV déposés dans s3://transactions
+2026-11-11 11:26:05,748 INFO    === Étape : base ===
+2026-11-11 11:26:05,799 INFO    Schéma de la base créé
+2026-11-11 11:26:05,800 INFO    === Étape : traitement ===
+2026-11-11 11:26:05,944 WARNING Tentative 1/4 échouée (panne de téléchargement simulée), nouvel essai dans 0.5s
+2026-11-11 11:26:06,444 WARNING Tentative 2/4 échouée (panne de téléchargement simulée), nouvel essai dans 1.0s
+2026-11-11 11:26:07,445 WARNING Tentative 3/4 échouée (panne de téléchargement simulée), nouvel essai dans 2.0s
+2026-11-11 11:26:09,709 INFO    transactions_2026_01.csv : 5 transactions insérées
+2026-11-11 11:26:09,956 INFO    transactions_2026_02.csv : 7 transactions insérées
+2026-11-11 11:26:10,187 INFO    transactions_2026_03.csv : 8 transactions insérées
+2026-11-11 11:26:10,188 INFO    Bilan : 3 insérés, 0 ignorés, 0 en échec
+2026-11-11 11:26:10,188 INFO    === Étape : tests-integration ===
+============================= test session starts =============================
+platform win32 -- Python 3.13.15, pytest-9.2.0, pluggy-1.7.0 -- C:\Users\sltec\Desktop\HelloWorld\integration continu\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\sltec\AppData\Local\Temp\scenario-lduu6asd\projet
+configfile: pytest.ini
+collecting ... collected 11 items
+
+tests/integration/test_resultat_pipeline.py::test_les_valeurs_inserees_par_la_pipeline_sont_correctes PASSED [  9%]
+tests/integration/test_resultat_pipeline.py::test_une_transaction_est_inseree_a_l_identique PASSED [ 18%]
+tests/integration/test_resultat_pipeline.py::test_le_dashboard_lit_les_donnees_de_la_base PASSED [ 27%]
+tests/integration/test_robustesse.py::test_les_trois_fichiers_sont_inseres PASSED [ 36%]
+tests/integration/test_robustesse.py::test_un_fichier_n_est_jamais_traite_deux_fois PASSED [ 45%]
+tests/integration/test_robustesse.py::test_un_fichier_renomme_n_est_pas_retraite PASSED [ 54%]
+tests/integration/test_robustesse.py::test_les_pannes_d_insertion_sont_relancees_sans_doublon PASSED [ 63%]
+tests/integration/test_robustesse.py::test_un_echec_definitif_d_insertion_ne_laisse_rien_puis_le_fichier_est_repris PASSED [ 72%]
+tests/integration/test_robustesse.py::test_les_pannes_de_telechargement_sont_relancees PASSED [ 81%]
+tests/integration/test_robustesse.py::test_un_telechargement_definitivement_en_panne_est_repris_au_passage_suivant PASSED [ 90%]
+tests/integration/test_robustesse.py::test_un_fichier_invalide_est_signale_sans_bloquer_les_autres PASSED [100%]
+
+============================= 11 passed in 10.63s =============================
+[code de sortie : 0]

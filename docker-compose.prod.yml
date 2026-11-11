@@ -1,0 +1,88 @@
+# Setup de production : S3, base de données, service de traitement et dashboard.
+# Seul Grafana est exposé ; S3 et PostgreSQL restent accessibles depuis la machine.
+name: pipeline-de-prod
+
+services:
+  s3:
+    image: chrislusf/seaweedfs:3.97
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/s3/demarrer.sh"]
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?variable obligatoire}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?variable obligatoire}
+    ports:
+      - "127.0.0.1:${S3_PORT:-8333}:8333"
+    volumes:
+      - ./s3:/s3:ro
+      - donnees_s3:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8333/status"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pipeline
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?variable obligatoire}
+      POSTGRES_DB: transactions
+    ports:
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+    volumes:
+      - donnees_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pipeline -d transactions"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  processeur:
+    image: ${IMAGE:?variable obligatoire}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      s3:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://pipeline:${POSTGRES_PASSWORD}@db:5432/transactions
+      S3_ENDPOINT: http://s3:8333
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: transactions
+      INTERVALLE_SECONDES: ${INTERVALLE_SECONDES:-30}
+    healthcheck:
+      test: ["CMD", "python", "-m", "pipeline.planificateur", "--sante"]
+      interval: 5s
+      timeout: 5s
+      start_period: 10s
+      retries: 12
+
+  grafana:
+    image: grafana/grafana:12.1.1
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?variable obligatoire}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - donnees_grafana:/var/lib/grafana
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+volumes:
+  donnees_s3:
+  donnees_db:
+  donnees_grafana:

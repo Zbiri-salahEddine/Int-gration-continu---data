@@ -1,0 +1,38 @@
+Bug injecté dans pipeline/generation.py : "7500.75"  ->  "7500,75"
+
+$ python run_pipeline.py
+2026-11-11 11:22:19,108 INFO    === Étape : infra ===
+ Network pipeline-de_default  Creating
+ Network pipeline-de_default  Created
+ Container pipeline-de-s3-1  Creating
+ Container pipeline-de-db-1  Creating
+ Container pipeline-de-s3-1  Created
+ Container pipeline-de-db-1  Created
+ Container pipeline-de-grafana-1  Creating
+ Container pipeline-de-grafana-1  Created
+ Container pipeline-de-s3-1  Starting
+ Container pipeline-de-db-1  Starting
+ Container pipeline-de-db-1  Started
+ Container pipeline-de-db-1  Waiting
+ Container pipeline-de-s3-1  Started
+ Container pipeline-de-db-1  Healthy
+ Container pipeline-de-grafana-1  Starting
+ Container pipeline-de-grafana-1  Started
+ Container pipeline-de-grafana-1  Waiting
+ Container pipeline-de-s3-1  Waiting
+ Container pipeline-de-db-1  Waiting
+ Container pipeline-de-db-1  Healthy
+ Container pipeline-de-grafana-1  Healthy
+ Container pipeline-de-s3-1  Healthy
+2026-11-11 11:22:46,332 INFO    S3, PostgreSQL et Grafana démarrés, bucket transactions prêt
+2026-11-11 11:22:46,332 INFO    === Étape : generation ===
+2026-11-11 11:22:46,579 INFO    3 fichiers CSV déposés dans s3://transactions
+2026-11-11 11:22:46,579 INFO    === Étape : base ===
+2026-11-11 11:22:46,650 INFO    Schéma de la base créé
+2026-11-11 11:22:46,650 INFO    === Étape : traitement ===
+2026-11-11 11:22:46,919 ERROR   transactions_2026_01.csv : ÉCHEC : ligne 5 : montant invalide ('7500,75')
+2026-11-11 11:22:47,181 INFO    transactions_2026_02.csv : 7 transactions insérées
+2026-11-11 11:22:47,427 INFO    transactions_2026_03.csv : 8 transactions insérées
+2026-11-11 11:22:47,428 INFO    Bilan : 2 insérés, 0 ignorés, 1 en échec
+Fichiers en échec : transactions_2026_01.csv
+[code de sortie : 1]
